@@ -1,1 +1,1 @@
-web: gunicorn railway_tickets.wsgi --log-file
+web: gunicorn railway_tickets.wsgi

@@ -77,7 +77,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'railway_tickets.wsgi.application'
 
-
+CORS_ALLOWED_ORIGINS = [
+    'https://heartfelt-gaufre-6dad5f.netlify.app',
+]
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 DATABASES = {

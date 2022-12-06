@@ -174,5 +174,5 @@ class OrderViewSet(viewsets.ModelViewSet):
     def status_orders(self, request, order_status):
         if order_status not in [status_order[0] for status_order in Order.STATUS_CHOICES]:
             return Response('No such status', status=status.HTTP_400_BAD_REQUEST)
-        filtered_orders = Order.objects.filter(order_status=order_status)
+        filtered_orders = Order.objects.filter(order_status=order_status, user=request.user)
         return Response({'data': self.serializer_class(filtered_orders, many=True).data}, status=status.HTTP_200_OK)

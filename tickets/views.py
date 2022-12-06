@@ -41,11 +41,33 @@ class CityViewSet(viewsets.ModelViewSet, RailwayAPI):
     permission_classes = (IsAuthenticated,)
     serializer_class = CitySerializer
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+
 
 class ArrivalPointViewSet(viewsets.ModelViewSet, RailwayAPI):
     queryset = ArrivalPoint.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = ArrivalPointSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
 class CarriageTypeViewSet(viewsets.ModelViewSet, RailwayAPI):
@@ -53,6 +75,16 @@ class CarriageTypeViewSet(viewsets.ModelViewSet, RailwayAPI):
     permission_classes = (IsAuthenticated,)
     serializer_class = CarriageTypeSerializer
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 class CarriageViewSet(viewsets.ModelViewSet, RailwayAPI):
     queryset = Carriage.objects.all()
@@ -67,7 +99,18 @@ class CarriageViewSet(viewsets.ModelViewSet, RailwayAPI):
         all_seats = range(1, carriage.seat_amount + 1)
 
         available_seats = list(set(all_seats) - set(taken_seats))
-        return Response(available_seats, status=status.HTTP_200_OK)
+        return Response({'data': available_seats}, status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
 class RouteViewSet(viewsets.ModelViewSet, RailwayAPI):
@@ -85,13 +128,41 @@ class RouteViewSet(viewsets.ModelViewSet, RailwayAPI):
     def search_route(self, request):
         serializer = SearchRouteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        return Response(serializer.validated_data, status=status.HTTP_200_OK)
+        return Response({'data': serializer.validated_data}, status=status.HTTP_200_OK)
+
+    @action(methods=('GET', ), detail=True, url_path='carriages')
+    def get_carriages(self, request, pk):
+        carriages = Carriage.objects.filter(route_id=pk)
+        serializer = CarriageSerializer(carriages, many=True)
+        return Response(data={'data': serializer.data}, status=status.HTTP_200_OK)
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
 class TicketsViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = TicketSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -104,4 +175,4 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order_status not in [status_order[0] for status_order in Order.STATUS_CHOICES]:
             return Response('No such status', status=status.HTTP_400_BAD_REQUEST)
         filtered_orders = Order.objects.filter(order_status=order_status)
-        return Response(self.serializer_class(filtered_orders, many=True).data, status=status.HTTP_200_OK)
+        return Response({'data': self.serializer_class(filtered_orders, many=True).data}, status=status.HTTP_200_OK)

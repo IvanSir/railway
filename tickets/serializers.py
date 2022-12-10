@@ -2,7 +2,7 @@ from datetime import datetime
 
 from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, Serializer
-
+from django.db.models import Q
 from tickets.models import Ticket, Route, ArrivalPoint, Order, City, Carriage, CarriageType, RouteToArrivalPoint
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
@@ -126,6 +126,29 @@ class CarriageSerializer(ModelSerializer):
         return data
 
 
+class CarriageSeatsSerializer(ModelSerializer):
+
+    class Meta:
+        model = Carriage
+        fields = ('id', 'carriage_type', 'seat_amount', 'route')
+
+    def validate_seat_amount(self, data):
+        if data > 100:
+            raise serializers.ValidationError('Max seat amount is 100')
+        return data
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance=instance)
+        tickets_carriage = Ticket.objects.filter(carriage=instance)
+        taken_seats = [ticket.seat_number for ticket in tickets_carriage]
+        all_seats = range(1, instance.seat_amount + 1)
+
+        available_seats = list(set(all_seats) - set(taken_seats))
+        data['route'] = RouteSerializer(instance.route).data
+        data['available_seats'] = available_seats
+        return data
+
+
 class TicketSerializer(ModelSerializer):
 
     class Meta:
@@ -182,7 +205,7 @@ class TicketSerializer(ModelSerializer):
 class SearchRouteSerializer(Serializer):
     departure_city = serializers.CharField(required=True, max_length=32)
     arrival_city = serializers.CharField(required=False, write_only=True, max_length=32)
-    departure_day = serializers.DateTimeField(required=False, write_only=True, format='%Y-%m-%d')
+    departure_day = serializers.DateTimeField(required=False, write_only=True, input_formats=('%Y-%m-%d',))
 
     def validate_departure_city(self, data):
         if not City.objects.filter(city_name=data):
@@ -197,6 +220,7 @@ class SearchRouteSerializer(Serializer):
     def to_internal_value(self, data):
         super().to_internal_value(data)
         departure_city = data.get('departure_city')
+
         if not departure_city:
             raise serializers.ValidationError({'departure_city': 'This field is required.'})
         filtered_routes = Route.objects.filter(departure_city__arrival_city__city_name=departure_city)
@@ -210,14 +234,14 @@ class SearchRouteSerializer(Serializer):
 
         if departure_day_str := data.get('departure_day'):
             departure_day = datetime.strptime(departure_day_str, '%Y-%m-%d')
-            filtered_routes = filtered_routes.filter(routetoarrivalpoint__arrival_time__date=departure_day, departure_time__date=departure_day)
+            filtered_routes = filtered_routes.filter(Q(routetoarrivalpoint__arrival_time__date=departure_day) | Q(departure_time__date=departure_day))
 
 
         if arrival_city := data.get('arrival_city'):
             routes_ids = RouteToArrivalPoint.objects.filter(arrival_point__arrival_city__city_name=arrival_city).values_list('route', flat=True)
             filtered_routes = filtered_routes.filter(id__in=routes_ids)
 
-        return RouteSerializer(filtered_routes, many=True).data
+        return RouteSerializer(set(filtered_routes), many=True).data
 
 
 class OrderSerializer(ModelSerializer):

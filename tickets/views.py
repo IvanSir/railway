@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
 from tickets.models import Ticket, ArrivalPoint, Route, Order, City, CarriageType, Carriage
 from tickets.serializers import TicketSerializer, RouteSerializer, ArrivalPointSerializer, OrderSerializer, \
-    CitySerializer, CarriageTypeSerializer, CarriageSerializer, SearchRouteSerializer
+    CitySerializer, CarriageTypeSerializer, CarriageSerializer, SearchRouteSerializer, CarriageSeatsSerializer
 
 
 class RailwayAPI:
@@ -91,15 +91,6 @@ class CarriageViewSet(viewsets.ModelViewSet, RailwayAPI):
     permission_classes = (IsAuthenticated,)
     serializer_class = CarriageSerializer
 
-    @action(methods=('GET',), detail=True, url_path='available_seats')
-    def available_seats(self, request, pk):
-        carriage = Carriage.objects.get(pk=pk)
-        tickets_carriage = Ticket.objects.filter(carriage=carriage)
-        taken_seats = [ticket.seat_number for ticket in tickets_carriage]
-        all_seats = range(1, carriage.seat_amount + 1)
-
-        available_seats = list(set(all_seats) - set(taken_seats))
-        return Response({'data': available_seats}, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
@@ -133,7 +124,7 @@ class RouteViewSet(viewsets.ModelViewSet, RailwayAPI):
     @action(methods=('GET', ), detail=True, url_path='carriages')
     def get_carriages(self, request, pk):
         carriages = Carriage.objects.filter(route_id=pk)
-        serializer = CarriageSerializer(carriages, many=True)
+        serializer = CarriageSeatsSerializer(carriages, many=True)
         return Response(data={'data': serializer.data}, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):

@@ -50,3 +50,4 @@ traitlets==5.5.0
 uritemplate==4.1.1
 urllib3==1.26.12
 wcwidth==0.2.5
+stripe==5.0.0

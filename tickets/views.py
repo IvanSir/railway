@@ -162,6 +162,18 @@ class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = (IsAuthenticated,)
     serializer_class = OrderSerializer
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset.filter(user=request.user), many=True)
+        return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+
+
     @action(methods=('GET',), detail=False, url_path=r'(?P<order_status>\w+)')
     def status_orders(self, request, order_status):
         if order_status not in [status_order[0] for status_order in Order.STATUS_CHOICES]:
@@ -171,13 +183,11 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(methods=('GET', ), detail=True, url_path='buy')
     def buy_order(self, request, pk):
-        orders = Order.objects.filter(pk=pk, order_status='pending', user=request.user)
-        price = 0
-        for order in orders:
-            price += order.total_price
+        order = Order.objects.get(pk=pk, user=request.user)
+        price = order.total_price
 
-        if not orders or not price:
-            return Response('No pending orders', status=status.HTTP_400_BAD_REQUEST)
+        if not order or not price or order.order_status != 'success':
+            return Response('No pending or fail orders', status=status.HTTP_400_BAD_REQUEST)
 
         payment_intent = stripe.PaymentIntent.create(
             amount=price,

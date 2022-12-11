@@ -6,7 +6,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 
 from tickets.models import Ticket, ArrivalPoint, Route, Order, City, CarriageType, Carriage
 from tickets.serializers import TicketSerializer, RouteSerializer, ArrivalPointSerializer, OrderSerializer, \
-    CitySerializer, CarriageTypeSerializer, CarriageSerializer, SearchRouteSerializer, CarriageSeatsSerializer
+    CitySerializer, CarriageTypeSerializer, CarriageSerializer, SearchRouteSerializer, CarriageSeatsSerializer, \
+    OrderPatchSerializer
 
 
 class RailwayAPI:
@@ -161,6 +162,12 @@ class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = OrderSerializer
+    serializer_action_classes = {
+        'partial_update' : OrderPatchSerializer
+    }
+
+    def get_serializer_class(self):
+        return self.serializer_action_classes.get(self.action, self.serializer_class)
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())

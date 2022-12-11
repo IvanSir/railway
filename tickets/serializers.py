@@ -249,3 +249,15 @@ class OrderSerializer(ModelSerializer):
     class Meta:
         model = Order
         fields = ('id', 'order_status', 'ordered_tickets', 'total_price', 'user')
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance=instance)
+        data['ordered_tickets'] = TicketSerializer(data['ordered_tickets'], many=True)
+        return data
+
+
+class OrderPatchSerializer(ModelSerializer):
+
+    class Meta:
+        model = Order
+        fields = ('id', 'order_status')

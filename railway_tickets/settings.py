@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.1/ref/settings/
 import os
 from datetime import timedelta
 from pathlib import Path
+import stripe
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -185,3 +186,4 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_ROOT = os.path.join(BASE_DIR,'media')
 MEDIA_URL = '/media/'
+stripe.api_key = 'sk_test_51MDmlRGCpPbaDbeuipA1AMyldzcMxez9JwkjxEi972zABClWLhQXoDiKTsbSMuKMLJ8WW9smp28rHOuUorilT54500xItrI2mR'

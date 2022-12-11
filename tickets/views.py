@@ -1,3 +1,4 @@
+import stripe
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -167,3 +168,20 @@ class OrderViewSet(viewsets.ModelViewSet):
             return Response('No such status', status=status.HTTP_400_BAD_REQUEST)
         filtered_orders = Order.objects.filter(order_status=order_status, user=request.user)
         return Response({'data': self.serializer_class(filtered_orders, many=True).data}, status=status.HTTP_200_OK)
+
+    @action(methods=('GET', ), detail=True, url_path='buy')
+    def buy_order(self, request, pk):
+        orders = Order.objects.filter(pk=pk, order_status='pending', user=request.user)
+        price = 0
+        for order in orders:
+            price += order.total_price
+
+        if not orders or not price:
+            return Response('No pending orders', status=status.HTTP_400_BAD_REQUEST)
+
+        payment_intent = stripe.PaymentIntent.create(
+            amount=price,
+            currency="usd",
+            payment_method_types=["card"],
+        )
+        return Response({'client_secret': payment_intent.get('client_secret')}, status=status.HTTP_200_OK)

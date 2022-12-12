@@ -120,7 +120,7 @@ class RouteViewSet(viewsets.ModelViewSet, RailwayAPI):
     def get_serializer_class(self):
         return self.serializer_action_classes.get(self.action, self.serializer_class)
 
-    @action(methods=('GET', ), detail=False, url_path='search')
+    @action(methods=('POST', ), detail=False, url_path='search')
     def search_route(self, request):
         serializer = SearchRouteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

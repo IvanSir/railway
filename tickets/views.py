@@ -181,7 +181,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
-    @action(methods=('GET',), detail=False, url_path=r'(?P<order_status>\w+)')
+    @action(methods=('GET',), detail=False, url_path=r'status/(?P<order_status>\w+)')
     def status_orders(self, request, order_status):
         if order_status not in [status_order[0] for status_order in Order.STATUS_CHOICES]:
             return Response('No such status', status=status.HTTP_400_BAD_REQUEST)

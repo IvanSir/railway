@@ -182,6 +182,8 @@ class TicketSerializer(ModelSerializer):
         data = super().to_representation(instance=instance)
         data['carriage'] = CarriageSerializer(instance.carriage).data
         data['price'] = instance.price
+        data['arrival_point'] = ArrivalPointSerializer(instance=instance.arrival_point).data
+        data['departure_point'] = ArrivalPointSerializer(instance=instance.departure_point).data
         return data
 
     def create(self, validated_data):
@@ -244,16 +246,28 @@ class SearchRouteSerializer(Serializer):
         return RouteSerializer(set(filtered_routes), many=True).data
 
 
+class NestedOrderTicketSerializer(ModelSerializer):
+    class Meta:
+        model = Ticket
+        fields = ('id', 'departure_point', 'arrival_point', 'carriage', 'seat_number', 'price')
+
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance=instance)
+        data['arrival_point'] = ArrivalPointSerializer(instance=instance.arrival_point).data
+        data['departure_point'] = ArrivalPointSerializer(instance=instance.departure_point).data
+        return data
+
 class OrderSerializer(ModelSerializer):
 
     class Meta:
         model = Order
         fields = ('id', 'order_status', 'ordered_tickets', 'total_price', 'user')
 
-    # def to_representation(self, instance):
-    #     data = super().to_representation(instance=instance)
-    #     data['ordered_tickets'] = TicketSerializer(data['ordered_tickets'], many=True).data
-    #     return data
+    def to_representation(self, instance):
+        data = super().to_representation(instance=instance)
+        data['ordered_tickets'] = NestedOrderTicketSerializer(instance=instance.ordered_tickets, many=True).data
+        return data
 
 
 class OrderPatchSerializer(ModelSerializer):

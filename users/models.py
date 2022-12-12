@@ -34,3 +34,4 @@ class DiscountType(models.Model):
 class Discount(models.Model):
     discount_type = models.ForeignKey('users.DiscountType', on_delete=models.CASCADE)
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
+    usage_amount = models.IntegerField(null=False, blank=False, default=0)

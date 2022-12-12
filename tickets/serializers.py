@@ -4,6 +4,7 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, Serializer
 from django.db.models import Q
 from tickets.models import Ticket, Route, ArrivalPoint, Order, City, Carriage, CarriageType, RouteToArrivalPoint
+from users.models import Discount
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 
@@ -271,7 +272,22 @@ class OrderSerializer(ModelSerializer):
 
 
 class OrderPatchSerializer(ModelSerializer):
+    discount_id = serializers.IntegerField(required=False)
 
     class Meta:
         model = Order
-        fields = ('id', 'order_status')
+        fields = ('id', 'order_status', 'discount_id')
+
+    def validate_discount_id(self, data):
+        if not Discount.objects.filter(id=data):
+            raise serializers.ValidationError('No such discount')
+        return data
+
+
+class OrderBuySerializer(Serializer):
+    discount_id = serializers.IntegerField(required=False)
+
+    def validate_discount_id(self, data):
+        if not Discount.objects.filter(id=data):
+            raise serializers.ValidationError('No such discount')
+        return data

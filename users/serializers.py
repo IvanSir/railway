@@ -47,4 +47,4 @@ class DiscountTypeSerializer(serializers.ModelSerializer):
 class DiscountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Discount
-        fields = ('id', 'discount_type', 'user')
+        fields = ('id', 'discount_type', 'user', 'usage_amount')

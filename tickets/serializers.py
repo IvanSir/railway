@@ -223,13 +223,13 @@ class SearchRouteSerializer(Serializer):
     departure_day = serializers.DateTimeField(required=False, write_only=True, input_formats=('%Y-%m-%d',))
 
     def validate_departure_city(self, data):
-        if not City.objects.filter(city_name=data):
-            raise serializers.ValidationError('City does not exist')
+        if not ArrivalPoint.objects.filter(id=data):
+            raise serializers.ValidationError('Arrival point does not exist')
         return data
 
     def validate_arrival_city(self, data):
-        if not City.objects.filter(city_name=data):
-            raise serializers.ValidationError('City does not exist')
+        if not ArrivalPoint.objects.filter(id=data):
+            raise serializers.ValidationError('Arrival point does not exist')
         return data
 
     def to_internal_value(self, data):

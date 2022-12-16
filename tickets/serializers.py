@@ -238,9 +238,9 @@ class SearchRouteSerializer(Serializer):
 
         if not departure_city:
             raise serializers.ValidationError({'departure_city': 'This field is required.'})
-        filtered_routes = Route.objects.filter(departure_city__arrival_city__city_name=departure_city)
+        filtered_routes = Route.objects.filter(departure_city=departure_city)
 
-        filtered_arrival_points = RouteToArrivalPoint.objects.filter(arrival_point__arrival_city__city_name=departure_city)
+        filtered_arrival_points = RouteToArrivalPoint.objects.filter(arrival_point=departure_city)
 
         for arrival_point in filtered_arrival_points:
             if arrival_point.order != RouteToArrivalPoint.objects.filter(route=arrival_point.route).count():

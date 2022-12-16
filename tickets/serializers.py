@@ -253,7 +253,7 @@ class SearchRouteSerializer(Serializer):
 
 
         if arrival_city := data.get('arrival_city'):
-            routes_ids = RouteToArrivalPoint.objects.filter(arrival_point__arrival_city__city_name=arrival_city).values_list('route', flat=True)
+            routes_ids = RouteToArrivalPoint.objects.filter(arrival_point=arrival_city).values_list('route', flat=True)
             filtered_routes = filtered_routes.filter(id__in=routes_ids)
 
         return RouteSerializer(set(filtered_routes), many=True).data

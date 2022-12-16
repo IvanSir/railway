@@ -98,6 +98,15 @@ class RouteSerializer(ModelSerializer):
         nested_data = NestedArrivalPointSerializer(arrival_points, many=True).data
         data['arrival_points'] = nested_data
         data['departure_city'] = ArrivalPointSerializer(instance=ArrivalPoint.objects.get(id=data['departure_city'])).data
+        carriages = list(instance.carriages.all())
+        data['available_seats_amount'] = {}
+        for carriage in carriages:
+            tickets_carriage = Ticket.objects.filter(carriage=carriage)
+            taken_seats = [ticket.seat_number for ticket in tickets_carriage]
+
+            available_seats = carriage.seat_amount - len(taken_seats)
+            if available_seats:
+                data['available_seats_amount'][carriage.carriage_type.carriage_type_name] = available_seats
         return data
 
     def create(self, validated_data):

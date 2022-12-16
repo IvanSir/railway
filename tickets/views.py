@@ -224,7 +224,7 @@ class OrderViewSet(viewsets.ModelViewSet):
 
 
         payment_intent = stripe.PaymentIntent.create(
-            amount=price,
+            amount=int(price * 100),
             currency="usd",
             payment_method_types=["card"],
         )

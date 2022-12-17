@@ -13,7 +13,7 @@ class User(AbstractUser):
     REQUIRED_FIELDS = ["username"]
 
     def __str__(self):
-        return self.username
+        return f'{self.id} - {self.username}'
 
 
 class DiscountType(models.Model):
@@ -30,8 +30,25 @@ class DiscountType(models.Model):
             raise ValidationError('When discount is limited you need to provide the limit')
         return super().save(force_insert, force_update, using, update_fields)
 
+    def __str__(self):
+        if self.discount_type_name == 'limited':
+            return f'{self.discount_type_name}({self.id}) - limit {self.discount_limit}'
+        else:
+            return f'{self.id} - {self.discount_type_name}'
+
 
 class Discount(models.Model):
     discount_type = models.ForeignKey('users.DiscountType', on_delete=models.CASCADE)
     user = models.ForeignKey('users.User', on_delete=models.CASCADE)
     usage_amount = models.IntegerField(null=False, blank=False, default=0)
+
+    def __str__(self):
+        if self.discount_type.discount_type_name == 'limited':
+            if self.discount_type.discount_limit - self.usage_amount > 0:
+                return f'{self.id} - {self.user.username} {self.discount_type.discount_type_name} - left {self.discount_type.discount_limit - self.usage_amount}'
+            else:
+                return f'{self.id} - {self.user.username} {self.discount_type.discount_type_name} - expired'
+
+        else:
+            return f'{self.id} - {self.user.username} {self.discount_type.discount_type_name}'
+

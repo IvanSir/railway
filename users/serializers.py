@@ -48,3 +48,8 @@ class DiscountSerializer(serializers.ModelSerializer):
     class Meta:
         model = Discount
         fields = ('id', 'discount_type', 'user', 'usage_amount')
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['discount_type'] = DiscountTypeSerializer(instance=DiscountType.objects.get(id=data['discount_type'])).data
+        return data

@@ -290,10 +290,6 @@ class OrderPatchSerializer(ModelSerializer):
         model = Order
         fields = ('id', 'order_status', 'discount_id')
 
-    def validate_discount_id(self, data):
-        if not Discount.objects.filter(id=data):
-            raise serializers.ValidationError('No such discount')
-        return data
 
 
 class OrderBuySerializer(Serializer):

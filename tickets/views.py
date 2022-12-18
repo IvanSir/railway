@@ -1,5 +1,7 @@
+import datetime
 import decimal
 
+import pytz
 import stripe
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import action
@@ -139,7 +141,7 @@ class RouteViewSet(viewsets.ModelViewSet, RailwayAPI):
         if page is not None:
             serializer = self.get_serializer(page, many=True)
             return self.get_paginated_response(serializer.data)
-
+        queryset = queryset.exclude(departure_time__lt=datetime.datetime.now().replace(tzinfo=pytz.UTC))
         serializer = self.get_serializer(queryset, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
@@ -193,6 +195,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             discount = Discount.objects.get(id=request.data.get('discount_id'))
             discount.usage_amount += 1
             discount.save()
+            if discount.discount_type.discount_type_name == 'limited' and discount.usage_amount >= discount.discount_type.discount_limit:
+                discount.delete()
         return self.update(request, *args, **kwargs)
 
     @action(methods=('GET',), detail=False, url_path=r'status/(?P<order_status>\w+)')
@@ -217,7 +221,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             if discount.user != request.user:
                 return Response('User does not have this discount', status=status.HTTP_400_BAD_REQUEST)
 
-            if discount.discount_type.discount_type_name == 'unlimited' or discount.usage_amount <= discount.discount_type.discount_limit:
+            if discount.discount_type.discount_type_name == 'unlimited' or discount.usage_amount < discount.discount_type.discount_limit:
                 price = price - price * decimal.Decimal(discount.discount_type.discount_percent) / 100
             else:
                 return Response('The number of uses of the discount exceeded the allowable amount', status=status.HTTP_400_BAD_REQUEST)

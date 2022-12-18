@@ -200,6 +200,9 @@ class TicketSerializer(ModelSerializer):
         data['price'] = instance.price
         data['arrival_point'] = ArrivalPointSerializer(instance=instance.arrival_point).data
         data['departure_point'] = ArrivalPointSerializer(instance=instance.departure_point).data
+        data['departure_point'].update({'departure_time': datetime.strftime(instance.carriage.route.departure_time, DATETIME_FORMAT)})
+        data['arrival_point'].update({'arrival_time': datetime.strftime(RouteToArrivalPoint.objects.filter(arrival_point_id=instance.arrival_point, route_id=instance.carriage.route).first().arrival_time, DATETIME_FORMAT)})
+
         return data
 
     def create(self, validated_data):
@@ -272,6 +275,9 @@ class NestedOrderTicketSerializer(ModelSerializer):
         data = super().to_representation(instance=instance)
         data['arrival_point'] = ArrivalPointSerializer(instance=instance.arrival_point).data
         data['departure_point'] = ArrivalPointSerializer(instance=instance.departure_point).data
+        data['departure_point'].update({'departure_time': datetime.strftime(instance.carriage.route.departure_time, DATETIME_FORMAT)})
+        data['arrival_point'].update({'arrival_time': datetime.strftime(RouteToArrivalPoint.objects.filter(arrival_point_id=instance.arrival_point, route_id=instance.carriage.route).first().arrival_time, DATETIME_FORMAT)})
+
         return data
 
 class OrderSerializer(ModelSerializer):

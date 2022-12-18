@@ -221,7 +221,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             if discount.user != request.user:
                 return Response('User does not have this discount', status=status.HTTP_400_BAD_REQUEST)
 
-            if discount.discount_type.discount_type_name == 'unlimited' or discount.usage_amount < discount.discount_type.discount_limit:
+            if discount.discount_type.discount_type_name == 'permanent' or discount.usage_amount < discount.discount_type.discount_limit:
                 price = price - price * decimal.Decimal(discount.discount_type.discount_percent) / 100
             else:
                 return Response('The number of uses of the discount exceeded the allowable amount', status=status.HTTP_400_BAD_REQUEST)

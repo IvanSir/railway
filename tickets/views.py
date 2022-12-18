@@ -3,15 +3,17 @@ import decimal
 
 import pytz
 import stripe
+from django.db import connection
 from rest_framework import status, viewsets, serializers
 from rest_framework.decorators import action
-from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
+from rest_framework.response import Response
 
 from tickets.models import Ticket, ArrivalPoint, Route, Order, City, CarriageType, Carriage
 from tickets.serializers import TicketSerializer, RouteSerializer, ArrivalPointSerializer, OrderSerializer, \
     CitySerializer, CarriageTypeSerializer, CarriageSerializer, SearchRouteSerializer, CarriageSeatsSerializer, \
     OrderPatchSerializer, OrderBuySerializer
+from tickets.sql_queries import update_query, delete_query, select_query, insert_query
 from users.models import Discount
 
 
@@ -48,16 +50,54 @@ class CityViewSet(viewsets.ModelViewSet, RailwayAPI):
     permission_classes = (IsAuthenticated,)
     serializer_class = CitySerializer
 
+    def update(self, request, *args, **kwargs):
+        kwargs.pop('partial', False)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        update_query(
+            table_name='tickets_city',
+            set_fields=serializer.data,
+            where_clause=kwargs
+        )
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        delete_query(
+            table_name='tickets_city',
+            where_clause=kwargs
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        rows = select_query(
+            table_name='tickets_city',
+            where_clause=kwargs
+        )
+        if not rows:
+            return Response('No such city')
+        city = City(*rows[0])
+        serializer = self.get_serializer(city)
+        return Response(serializer.data)
+
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
+        rows = select_query(
+            table_name='tickets_city',
+        )
+        cities = [City(*row) for row in rows]
+        serializer = self.get_serializer(cities, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid()
+        insert_query(
+            table_name='tickets_city',
+            fields=serializer.data.keys(),
+            values=serializer.data.values()
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
 class ArrivalPointViewSet(viewsets.ModelViewSet, RailwayAPI):
@@ -65,33 +105,108 @@ class ArrivalPointViewSet(viewsets.ModelViewSet, RailwayAPI):
     permission_classes = (IsAuthenticated,)
     serializer_class = ArrivalPointSerializer
 
+    def update(self, request, *args, **kwargs):
+        kwargs.pop('partial', False)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        update_query(
+            table_name='tickets_arrivalpoint',
+            set_fields=serializer.data,
+            where_clause=kwargs
+        )
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        delete_query(
+            table_name='tickets_arrivalpoint',
+            where_clause=kwargs
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        rows = select_query(
+            table_name='tickets_arrivalpoint',
+            where_clause=kwargs
+        )
+        if not rows:
+            return Response('No such arrival point')
+        ap = ArrivalPoint(*rows[0])
+        serializer = self.get_serializer(ap)
+        return Response(serializer.data)
+
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
+        rows = select_query(
+            table_name='tickets_arrivalpoint',
+        )
+        aps = [ArrivalPoint(*row) for row in rows]
+        serializer = self.get_serializer(aps, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid()
+        insert_query(
+            table_name='tickets_arrivalpoint',
+            fields=serializer.data.keys(),
+            values=serializer.data.values()
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class CarriageTypeViewSet(viewsets.ModelViewSet, RailwayAPI):
     queryset = CarriageType.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = CarriageTypeSerializer
 
+    def update(self, request, *args, **kwargs):
+        kwargs.pop('partial', False)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        update_query(
+            table_name='tickets_carriagetype',
+            set_fields=serializer.data,
+            where_clause=kwargs
+        )
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        delete_query(
+            table_name='tickets_carriagetype',
+            where_clause=kwargs
+        )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def retrieve(self, request, *args, **kwargs):
+        rows = select_query(
+            table_name='tickets_carriagetype',
+            where_clause=kwargs
+        )
+        if not rows:
+            return Response('No such carriage type')
+        cartype = CarriageType(*rows[0])
+        serializer = self.get_serializer(cartype)
+        return Response(serializer.data)
+
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
+        rows = select_query(
+            table_name='tickets_carriagetype',
+        )
+        cities = [CarriageType(*row) for row in rows]
+        serializer = self.get_serializer(cities, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid()
+        insert_query(
+            table_name='tickets_carriagetype',
+            fields=serializer.data.keys(),
+            values=serializer.data.values()
+        )
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class CarriageViewSet(viewsets.ModelViewSet, RailwayAPI):
     queryset = Carriage.objects.all()

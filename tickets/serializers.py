@@ -4,25 +4,24 @@ from rest_framework import serializers
 from rest_framework.serializers import ModelSerializer, Serializer
 from django.db.models import Q
 from tickets.models import Ticket, Route, ArrivalPoint, Order, City, Carriage, CarriageType, RouteToArrivalPoint
+from tickets.sql_queries import select_query
 from users.models import Discount
 
 DATETIME_FORMAT = "%Y-%m-%d %H:%M"
 
 
-class CitySerializer(ModelSerializer):
+class CitySerializer(Serializer):
+    id = serializers.IntegerField(read_only=True)
+    city_name = serializers.CharField(max_length=32, required=True)
+    description = serializers.CharField(max_length=255, required=False)
 
-    class Meta:
-        model = City
-        fields = ('id', 'city_name', 'description')
 
 
-class ArrivalPointSerializer(ModelSerializer):
+class ArrivalPointSerializer(Serializer):
+    id = serializers.IntegerField(read_only=True)
     arrival_city = serializers.CharField(max_length=32, required=True)
     arrival_place = serializers.CharField(max_length=255, required=True)
 
-    class Meta:
-        model = ArrivalPoint
-        fields = ('id', 'arrival_city', 'arrival_place')
 
     def to_internal_value(self, data):
         if arrival_city := data.get('arrival_city'):
@@ -33,10 +32,18 @@ class ArrivalPointSerializer(ModelSerializer):
         return data
 
 
-class CarriageTypeSerializer(ModelSerializer):
-    class Meta:
-        model = CarriageType
-        fields = ('id', 'carriage_type_name', 'description')
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        rows = select_query(table_name='tickets_city', fields=['city_name', ], where_clause={'id': data['arrival_city']})
+        data['arrival_city'] = rows[0][0]
+        return data
+
+
+class CarriageTypeSerializer(Serializer):
+    id = serializers.IntegerField(read_only=True)
+    carriage_type_name = serializers.CharField(max_length=32, required=True)
+    description = serializers.CharField(max_length=255, required=False)
+
 
 
 class NestedArrivalPointSerializer(Serializer):
@@ -289,11 +296,6 @@ class OrderPatchSerializer(ModelSerializer):
     class Meta:
         model = Order
         fields = ('id', 'order_status', 'discount_id')
-
-    def validate_discount_id(self, data):
-        if not Discount.objects.filter(id=data):
-            raise serializers.ValidationError('No such discount')
-        return data
 
 
 class OrderBuySerializer(Serializer):

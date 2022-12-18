@@ -14,8 +14,8 @@ class Ticket(models.Model):
 
 
 class ArrivalPoint(models.Model):
-    arrival_city = models.ForeignKey('tickets.City', on_delete=models.CASCADE, related_name='arrivals')
     arrival_place = models.CharField(max_length=255)
+    arrival_city = models.IntegerField()  # fk to city
 
     def __str__(self):
         return str(self.id)

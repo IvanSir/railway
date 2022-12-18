@@ -100,16 +100,22 @@ class RouteSerializer(ModelSerializer):
         data['departure_city'] = ArrivalPointSerializer(instance=ArrivalPoint.objects.get(id=data['departure_city'])).data
         carriages = list(instance.carriages.all())
         data['carriages'] = {}
+        car_type_seats = {}
         for carriage in carriages:
             tickets_carriage = Ticket.objects.filter(carriage=carriage)
+            carriage_type = carriage.carriage_type.carriage_type_name
             taken_seats = [ticket.seat_number for ticket in tickets_carriage]
-
             available_seats = carriage.seat_amount - len(taken_seats)
+
             if available_seats:
-                data['carriages'][carriage.carriage_type.carriage_type_name] = {
-                    'available_seats_amount': available_seats,
-                    'price': arrival_points.order_by('-order').first().price
-                }
+                if carriage_type in car_type_seats:
+                    car_type_seats[carriage_type]['available_seats_amount'] += available_seats
+                else:
+                    car_type_seats[carriage_type] = {'available_seats_amount': available_seats}
+                    car_type_seats[carriage_type]['price'] =  arrival_points.order_by('-order').first().price
+
+
+        data['carriages'] = car_type_seats
         return data
 
     def create(self, validated_data):

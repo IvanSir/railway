@@ -195,6 +195,12 @@ class OrderViewSet(viewsets.ModelViewSet):
             discount = Discount.objects.get(id=request.data.get('discount_id'))
             discount.usage_amount += 1
             discount.save()
+
+            order = self.get_object()
+            price = order.total_price - order.total_price * decimal.Decimal(discount.discount_type.discount_percent) / 100
+            order.total_price = price
+            order.save()
+
             if discount.discount_type.discount_type_name == 'limited' and discount.usage_amount >= discount.discount_type.discount_limit:
                 discount.delete()
         return self.update(request, *args, **kwargs)

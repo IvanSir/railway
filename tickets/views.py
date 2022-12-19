@@ -3,8 +3,7 @@ import decimal
 
 import pytz
 import stripe
-from django.db import connection
-from rest_framework import status, viewsets, serializers
+from rest_framework import status, viewsets, serializers, mixins
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny, IsAdminUser
 from rest_framework.response import Response
@@ -13,8 +12,8 @@ from tickets.models import Ticket, ArrivalPoint, Route, Order, City, CarriageTyp
 from tickets.serializers import TicketSerializer, RouteSerializer, ArrivalPointSerializer, OrderSerializer, \
     CitySerializer, CarriageTypeSerializer, CarriageSerializer, SearchRouteSerializer, CarriageSeatsSerializer, \
     OrderPatchSerializer, OrderBuySerializer
-from tickets.sql_queries import update_query, delete_query, select_query, insert_query
-from users.models import Discount
+from tickets.sql_queries import update_query, delete_query, select_query, insert_query, custom_query
+from users.models import Discount, DiscountType
 
 
 class RailwayAPI:
@@ -100,23 +99,10 @@ class CityViewSet(viewsets.ModelViewSet, RailwayAPI):
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
-class ArrivalPointViewSet(viewsets.ModelViewSet, RailwayAPI):
+class ArrivalPointViewSet(viewsets.GenericViewSet, mixins.CreateModelMixin, mixins.ListModelMixin, mixins.DestroyModelMixin, mixins.RetrieveModelMixin, RailwayAPI):
     queryset = ArrivalPoint.objects.all()
     permission_classes = (IsAuthenticated,)
     serializer_class = ArrivalPointSerializer
-
-    def update(self, request, *args, **kwargs):
-        kwargs.pop('partial', False)
-
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        update_query(
-            table_name='tickets_arrivalpoint',
-            set_fields=serializer.data,
-            where_clause=kwargs
-        )
-        return Response(serializer.data)
 
     def destroy(self, request, *args, **kwargs):
         delete_query(
@@ -146,11 +132,18 @@ class ArrivalPointViewSet(viewsets.ModelViewSet, RailwayAPI):
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid()
+        serializer.is_valid(raise_exception=True)
+        fk_changed = [field for field in serializer.data.keys()]
+        fk_changed[0] = 'arrival_city_id'
+
+        city_id = select_query(table_name='tickets_city', fields=['id', ], where_clause={'city_name': serializer.data['arrival_city']})[0][0]
+        val_changed = [field for field in serializer.data.values()]
+        val_changed[0] = city_id
+
         insert_query(
             table_name='tickets_arrivalpoint',
-            fields=serializer.data.keys(),
-            values=serializer.data.values()
+            fields=fk_changed,
+            values=val_changed
         )
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
@@ -213,16 +206,12 @@ class CarriageViewSet(viewsets.ModelViewSet, RailwayAPI):
     permission_classes = (IsAuthenticated,)
     serializer_class = CarriageSerializer
 
-
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
+        rows = select_query(
+            table_name='tickets_carriage',
+        )
+        cr = [Carriage(*row) for row in rows]
+        serializer = self.get_serializer(cr, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
 
@@ -245,21 +234,31 @@ class RouteViewSet(viewsets.ModelViewSet, RailwayAPI):
 
     @action(methods=('GET', ), detail=True, url_path='carriages')
     def get_carriages(self, request, pk):
-        carriages = Carriage.objects.filter(route_id=pk)
-        serializer = CarriageSeatsSerializer(carriages, many=True)
+        carriages = select_query(
+            table_name='tickets_carriage',
+            where_clause={'route_id': pk}
+        )
+
+        serializer = CarriageSeatsSerializer([Carriage(*car) for car in carriages], many=True)
         return Response(data={'data': serializer.data}, status=status.HTTP_200_OK)
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        queryset = queryset.exclude(departure_time__lt=datetime.datetime.now().replace(tzinfo=pytz.UTC))
-        serializer = self.get_serializer(queryset, many=True)
+        query = f"SELECT * FROM tickets_route WHERE departure_time>'{datetime.datetime.now().replace(tzinfo=pytz.UTC)}'"
+        rows = custom_query(query)
+        r = [Route(*row) for row in rows]
+        serializer = self.get_serializer(r, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
+    def retrieve(self, request, *args, **kwargs):
+        rows = select_query(
+            table_name='tickets_route',
+            where_clause=kwargs
+        )
+        if not rows:
+            return Response('No such route')
+        route = Route(*rows[0])
+        serializer = self.get_serializer(route)
+        return Response(serializer.data)
 
 class TicketsViewSet(viewsets.ModelViewSet):
     queryset = Ticket.objects.all()
@@ -267,15 +266,23 @@ class TicketsViewSet(viewsets.ModelViewSet):
     serializer_class = TicketSerializer
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset, many=True)
+        rows = select_query(
+            table_name='tickets_ticket'
+        )
+        tickets = [Ticket(*row) for row in rows]
+        serializer = self.get_serializer(tickets, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
+
+    def retrieve(self, request, *args, **kwargs):
+        rows = select_query(
+            table_name='tickets_ticket',
+            where_clause=kwargs
+        )
+        if not rows:
+            return Response('No such ticket')
+        ticket = Ticket(*rows[0])
+        serializer = self.get_serializer(ticket)
+        return Response(serializer.data)
 
 
 class OrderViewSet(viewsets.ModelViewSet):
@@ -291,14 +298,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         return self.serializer_action_classes.get(self.action, self.serializer_class)
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-
-        serializer = self.get_serializer(queryset.filter(user=request.user), many=True)
+        rows = select_query(
+            table_name='tickets_order',
+            where_clause={'user_id': request.user.id}
+        )
+        orders = [Order(*row) for row in rows]
+        serializer = self.get_serializer(orders, many=True)
         return Response({'data': serializer.data}, status=status.HTTP_200_OK)
 
     def partial_update(self, request, *args, **kwargs):
@@ -307,23 +312,61 @@ class OrderViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError({'order_status': "This field is required"})
 
         if request.data.get('order_status') == 'success' and request.data.get('discount_id'):
-            discount = Discount.objects.get(id=request.data.get('discount_id'))
+            discount = Discount(*select_query(
+                table_name='users_discount',
+                where_clause={'id': request.data.get('discount_id')}
+            )[0])
+
             discount.usage_amount += 1
-            discount.save()
-            if discount.discount_type.discount_type_name == 'limited' and discount.usage_amount >= discount.discount_type.discount_limit:
-                discount.delete()
+            update_query(
+                table_name='users_discount',
+                set_fields={'usage_amount': discount.usage_amount},
+                where_clause={'id': discount.id}
+
+            )
+
+            dt = DiscountType(*select_query(
+                table_name='users_discounttype',
+                where_clause={'id': discount.discount_type}
+            )[0])
+
+            if dt.discount_type_name == 'limited' and discount.usage_amount >= dt.discount_limit:
+                delete_query(
+                    table_name='users_discount',
+                    where_clause={'id': discount.id}
+                )
         return self.update(request, *args, **kwargs)
+
+    def update(self, request, *args, **kwargs):
+        kwargs.pop('partial', False)
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        update_query(
+            table_name='tickets_order',
+            set_fields=serializer.data,
+            where_clause=kwargs
+        )
+        return Response(serializer.data)
 
     @action(methods=('GET',), detail=False, url_path=r'status/(?P<order_status>\w+)')
     def status_orders(self, request, order_status):
         if order_status not in [status_order[0] for status_order in Order.STATUS_CHOICES]:
             return Response('No such status', status=status.HTTP_400_BAD_REQUEST)
-        filtered_orders = Order.objects.filter(order_status=order_status, user=request.user)
+
+        filtered_orders = [Order(*row) for row in select_query(
+            table_name='tickets_order',
+            where_clause={'order_status': order_status, 'user_id': request.user.id}
+        )]
         return Response({'data': self.serializer_class(filtered_orders, many=True).data}, status=status.HTTP_200_OK)
 
     @action(methods=('POST', ), detail=True, url_path='buy')
     def buy_order(self, request, pk):
-        order = Order.objects.get(pk=pk, user=request.user)
+        order = Order(*select_query(
+            table_name='tickets_order',
+            where_clause={'user_id': request.user.id, 'id': pk}
+        )[0])
         price = order.total_price
         if not order or not price or order.order_status == 'success':
             return Response('No pending or fail orders', status=status.HTTP_400_BAD_REQUEST)
@@ -332,12 +375,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         if serializer_data := serializer.validated_data :
 
-            discount = Discount.objects.get(id=serializer_data.get('discount_id'))
+            discount = Discount(*select_query(
+                table_name='users_discount',
+                where_clause={'id': serializer_data.get('discount_id')}
+            )[0])
+
+            dt = DiscountType(*select_query(
+                table_name='users_discounttype',
+                where_clause={'id': discount.discount_type}
+            )[0])
+
             if discount.user != request.user:
                 return Response('User does not have this discount', status=status.HTTP_400_BAD_REQUEST)
 
-            if discount.discount_type.discount_type_name == 'unlimited' or discount.usage_amount < discount.discount_type.discount_limit:
-                price = price - price * decimal.Decimal(discount.discount_type.discount_percent) / 100
+            if dt.discount_type_name == 'permanent' or discount.usage_amount < dt.discount_limit:
+                price = price - price * decimal.Decimal(dt.discount_percent) / 100
             else:
                 return Response('The number of uses of the discount exceeded the allowable amount', status=status.HTTP_400_BAD_REQUEST)
 

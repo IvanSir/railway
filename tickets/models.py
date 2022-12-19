@@ -4,10 +4,11 @@ from django.db import models
 class Ticket(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     seat_number = models.IntegerField()
-    order = models.ForeignKey('tickets.Order', on_delete=models.SET_NULL, related_name='ordered_tickets', blank=True, null=True)
-    carriage = models.ForeignKey('tickets.Carriage', on_delete=models.CASCADE, related_name='tickets')
-    departure_point = models.ForeignKey('tickets.ArrivalPoint', on_delete=models.CASCADE)
-    arrival_point = models.ForeignKey('tickets.ArrivalPoint', on_delete=models.CASCADE, related_name="tickets")
+    arrival_point = models.IntegerField()
+    carriage = models.IntegerField()
+    departure_point = models.IntegerField()
+    order = models.IntegerField()
+
 
     def __str__(self):
         return f'{self.carriage}, Seat: {self.seat_number}'
@@ -22,19 +23,19 @@ class ArrivalPoint(models.Model):
 
 
 class Route(models.Model):
-    departure_city = models.ForeignKey('tickets.ArrivalPoint', on_delete=models.CASCADE, related_name='departures')
     departure_time = models.DateTimeField(blank=False, null=False)
+    departure_city = models.IntegerField()
 
     def __str__(self):
         return f'From {self.departure_city} at {self.departure_time}'
 
 
 class RouteToArrivalPoint(models.Model):
-    route = models.ForeignKey(Route, on_delete=models.CASCADE)
-    arrival_point = models.ForeignKey(ArrivalPoint, on_delete=models.CASCADE)
     order = models.IntegerField()
     price = models.DecimalField(max_digits=10, decimal_places=2)
     arrival_time = models.DateTimeField()
+    arrival_point = models.IntegerField()
+    route = models.IntegerField()
 
 
 class CarriageType(models.Model):
@@ -48,9 +49,9 @@ class CarriageType(models.Model):
 
 
 class Carriage(models.Model):
-    carriage_type = models.ForeignKey('tickets.CarriageType', on_delete=models.CASCADE)
     seat_amount = models.IntegerField()
-    route = models.ForeignKey('tickets.Route', on_delete=models.CASCADE, related_name='carriages')
+    carriage_type = models.IntegerField()
+    route = models.IntegerField()
 
     def __str__(self):
         return f'{self.carriage_type}: {self.id}'

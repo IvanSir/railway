@@ -1,11 +1,11 @@
 from django.db import connection
 
 def insert_query(table_name, fields, values):
+
     values = ', '.join([f"'{value}'" for value in values])
     fields = ', '.join(fields)
 
     query = f'INSERT INTO "{table_name}" ({fields}) VALUES ({values})'
-
     with connection.cursor() as cursor:
         cursor.execute(query)
 
@@ -58,10 +58,18 @@ def select_query(table_name, fields='*', where_clause=None):
         for key, value in where_clause.items():
             if key == 'pk':
                 key = 'id'
-            wheres.append(f'{key}={value}')
+            wheres.append(f"{key}='{value}'")
 
         wheres = ' AND '.join(wheres)
         query += f' WHERE {wheres}'
+    with connection.cursor() as cursor:
+        cursor.execute(query)
+        rows = cursor.fetchall()
+    return rows
+
+
+
+def custom_query(query):
     with connection.cursor() as cursor:
         cursor.execute(query)
         rows = cursor.fetchall()
